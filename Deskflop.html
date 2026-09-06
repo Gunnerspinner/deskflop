@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>deskflop: zero</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.4);
+            --bg-base: #030814;
+            --glass-panel: rgba(10, 25, 47, 0.88);
+            --glass-card: rgba(255, 255, 255, 0.08);
+            --glass-hover: rgba(0, 242, 254, 0.15);
+            --border-glass: rgba(0, 242, 254, 0.3);
+            --text-main: #ffffff;
+            --text-sub: #70e2ff;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --desktop-bg: radial-gradient(circle at 50% 30%, #0a2540 0%, #020b18 100%);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+        body, html { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg-base); color: var(--text-main); }
+
+        /* --- AUTH & BOOT GATEWAY --- */
+        #boot-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #071e3d 0%, #010610 100%);
+            z-index: 100000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #boot-screen.fade-out { opacity: 0; pointer-events: none; }
+        
+        .boot-brand-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; width: 100%; max-width: 360px; padding: 20px;
+        }
+        .boot-icon-glow {
+            font-size: 64px; color: #ffffff;
+            text-shadow: 0 0 30px var(--accent), 0 0 60px var(--accent);
+            margin-bottom: 12px;
+        }
+        .boot-title {
+            font-size: 32px; font-weight: 900; letter-spacing: 8px;
+            background: linear-gradient(135deg, #ffffff, #70e2ff, #00f2fe);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-transform: lowercase; margin-bottom: 4px;
+        }
+        .boot-subtitle {
+            font-size: 10px; color: #ffffff; letter-spacing: 4px; font-weight: 700; margin-bottom: 24px; opacity: 0.9;
+        }
+
+        /* Authentication Box Styling */
+        .auth-card {
+            width: 100%; background: rgba(10, 25, 47, 0.6); backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass); border-radius: var(--radius-lg);
+            padding: 24px; display: flex; flex-direction: column; gap: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(0, 242, 254, 0.1);
+        }
+        .auth-tabs { display: flex; border-bottom: 1px solid var(--border-glass); margin-bottom: 6px; }
+        .auth-tab {
+            flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700;
+            color: var(--text-sub); cursor: pointer; transition: 0.2s; border-bottom: 2px solid transparent;
+        }
+        .auth-tab.active { color: #ffffff; border-bottom-color: var(--accent); }
+        .auth-input-group { display: flex; flex-direction: column; gap: 6px; }
+        .auth-input-group label { font-size: 10px; color: var(--text-sub); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        #context-menu {
+            position: absolute; display: none; background: var(--glass-panel); backdrop-filter: blur(25px);
+            border: 1px solid var(--border-glass); border-radius: var(--radius-md); width: 220px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000000; padding: 6px; flex-direction: column; gap: 2px;
+        }
+        .ctx-header { font-size: 10px; font-weight: 800; color: var(--text-sub); padding: 6px 10px 2px; text-transform: uppercase; letter-spacing: 1px; }
+        .ctx-item { padding: 8px 10px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-main); transition: 0.15s; }
+        .ctx-item:hover { background: #ffffff; color: #020b18; font-weight: 600; }
+        .ctx-item.danger:hover { background: #ff4757; color: white; }
+
+        #desktop {
+            width: 100vw; height: calc(100vh - 54px);
+            background: var(--desktop-bg);
+            position: relative; padding: 20px; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 16px;
+        }
+        .app-icon {
+            width: 88px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;
+            border-radius: var(--radius-md); padding: 10px 6px; border: 1px solid transparent; transition: all 0.2s ease;
+        }
+        .app-icon:hover { background: var(--glass-card); border-color: var(--border-glass); backdrop-filter: blur(10px); transform: translateY(-2px); }
+        .app-icon i { font-size: 34px; filter: drop-shadow(0 4px 8px rgba(0,242,254,0.3)); }
+        .app-icon img.custom-app-icon { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
+        .app-icon span { font-size: 11px; font-weight: 600; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.9); color: #ffffff; word-break: break-word; }
+
+        .os-window {
+            position: absolute; width: 850px; height: 560px;
+            background: var(--glass-panel); backdrop-filter: blur(25px);
+            border: 1px solid var(--border-glass); border-radius: var(--radius-lg);
+            display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 242, 254, 0.1); overflow: hidden;
+            min-width: 400px; min-height: 280px; opacity: 0; transform: scale(0.95); transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .os-window.active { opacity: 1; transform: scale(1); }
+        .os-window.maximized { top: 0 !important; left: 0 !important; width: 100vw !important; height: calc(100vh - 54px) !important; border-radius: 0 !important; }
+        
+        .window-header {
+            height: 42px; background: rgba(5, 15, 30, 0.95); display: flex; align-items: center; justify-content: space-between;
+            padding-left: 14px; cursor: move; border-bottom: 1px solid var(--border-glass);
+        }
+        .window-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: #ffffff; }
+        .window-controls { display: flex; height: 100%; }
+        .control-btn { width: 46px; height: 100%; border: none; background: transparent; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: 0.15s; }
+        .control-btn:hover { background: var(--glass-hover); color: var(--accent); }
+        .btn-close:hover { background: #ff4757; color: white; }
+        .window-content { flex: 1; position: relative; background: #020813; overflow: auto; padding: 16px; display: flex; flex-direction: column; }
+
+        #taskbar {
+            width: 100vw; height: 54px; background: rgba(5, 15, 30, 0.92); backdrop-filter: blur(25px);
+            position: absolute; bottom: 0; left: 0; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; border-top: 1px solid var(--border-glass); z-index: 9999;
+        }
+        .taskbar-left { display: flex; align-items: center; gap: 8px; }
+        .taskbar-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; }
+        .taskbar-right { display: flex; align-items: center; gap: 12px; font-size: 11px; color: #ffffff; }
+        .taskbar-btn {
+            width: 42px; height: 42px; border-radius: var(--radius-md); border: 1px solid transparent; background: transparent;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #ffffff; position: relative; transition: 0.15s;
+        }
+        .taskbar-btn:hover { background: var(--glass-card); border-color: var(--border-glass); }
+        .taskbar-btn.active-win { background: var(--glass-hover); border-color: var(--accent); }
+        .taskbar-btn.active-win::after { content: ''; position: absolute; bottom: 3px; width: 14px; height: 3px; background: #ffffff; border-radius: 2px; box-shadow: 0 0 8px #ffffff; }
+
+        .system-tray-group { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.06); padding: 6px 14px; border-radius: 30px; border: 1px solid var(--border-glass); }
+        .tray-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
+
+        #start-menu {
+            position: absolute; bottom: 66px; left: 50%; transform: translateX(-50%) translateY(20px);
+            width: 440px; height: 490px; background: var(--glass-panel); backdrop-filter: blur(30px);
+            border: 1px solid var(--border-glass); border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 30px rgba(0, 242, 254, 0.15);
+            display: none; opacity: 0; transition: all 0.2s ease; z-index: 9998; padding: 22px; flex-direction: column; justify-content: space-between;
+        }
+        #start-menu.active { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+        .start-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+        .start-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; border-radius: var(--radius-md); cursor: pointer; border: 1px solid transparent; transition: 0.15s; }
+        .start-item:hover { background: var(--glass-hover); border-color: var(--border-glass); }
+        .start-item i { font-size: 26px; }
+        .start-item span { font-size: 11px; font-weight: 500; }
+
+        .btn-os { padding: 8px 16px; background: linear-gradient(135deg, #00f2fe, #00a8ff); border: none; color: #020b18; font-weight: 700; font-size: 12px; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: 0.15s; box-shadow: 0 4px 12px rgba(0,242,254,0.3); }
+        .btn-os:hover { filter: brightness(1.2); transform: translateY(-1px); }
+        input[type="text"], input[type="password"], textarea, select { width: 100%; background: rgba(0,10,25,0.7); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); color: #ffffff; padding: 10px; outline: none; font-size: 12px; }
+        input[type="text"]:focus, input[type="password"]:focus, select:focus { border-color: #ffffff; box-shadow: 0 0 8px var(--accent-glow); }
+
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-top: 12px; }
+        .store-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; transition: 0.2s; position: relative; }
+        .store-card:hover { background: var(--glass-hover); transform: translateY(-2px); }
+        .store-card i { font-size: 32px; }
+        .store-card img.store-icon-img { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; }
+        .protected-badge { position: absolute; top: 8px; right: 8px; font-size: 10px; color: var(--accent); }
+
+        .chat-container { display: flex; height: 100%; margin: -16px; background: #020813; }
+        .chat-sidebar { width: 200px; border-right: 1px solid var(--border-glass); background: #051329; display: flex; flex-direction: column; }
+        .chat-main { flex: 1; display: flex; flex-direction: column; }
+        .server-item { padding: 10px 14px; border-bottom: 1px solid rgba(0, 242, 254, 0.1); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text-sub); transition: 0.15s; }
+        .server-item:hover, .server-item.active { background: var(--glass-hover); color: #ffffff; font-weight: 600; border-left: 3px solid var(--accent); }
+
+        .about-card {
+            background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md); padding: 18px; margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTHENTICATION GATEWAY -->
+    <div id="boot-screen">
+        <div class="boot-brand-container">
+            <i class="fa-solid fa-bolt-lightning boot-icon-glow"></i>
+            <div class="boot-title">deskflop</div>
+            <div class="boot-subtitle">ZERO</div>
+
+            <div class="auth-card">
+                <div class="auth-tabs">
+                    <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</div>
+                    <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Create Account</div>
+                </div>
+
+                <div class="auth-input-group">
+                    <label>Unique Handle</label>
+                    <input type="text" id="auth-username" placeholder="Username (Unique)">
+                </div>
+
+                <div class="auth-input-group">
+                    <label>Password</label>
+                    <input type="password" id="auth-password" placeholder="••••••••">
+                </div>
+
+                <button class="btn-os" id="auth-submit-btn" onclick="handleAuthSubmit()">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu"></div>
+
+    <div id="desktop" onclick="hideContext()">
+        <div class="app-icon" data-app="about" onclick="openApp('about')">
+            <i class="fa-solid fa-circle-info" style="color:#ffffff;"></i>
+            <span>About</span>
+        </div>
+        <div class="app-icon" data-app="app_store" onclick="openApp('app_store')">
+            <i class="fa-solid fa-store" style="color:#00f2fe;"></i>
+            <span>App Store</span>
+        </div>
+        <div class="app-icon" data-app="app_publisher" onclick="openApp('app_publisher')">
+            <i class="fa-solid fa-upload" style="color:#70e2ff;"></i>
+            <span>Publisher</span>
+        </div>
+        <div class="app-icon" data-app="chat" onclick="openApp('chat')">
+            <i class="fa-brands fa-discord" style="color:#38ef7d;"></i>
+            <span>Chat Network</span>
+        </div>
+        <div class="app-icon" data-app="files" onclick="openApp('files')">
+            <i class="fa-solid fa-box-archive" style="color:#00c6ff;"></i>
+            <span>Files Vault</span>
+        </div>
+        <div class="app-icon" data-app="settings" onclick="openApp('settings')">
+            <i class="fa-solid fa-sliders" style="color:#ffffff;"></i>
+            <span>Settings</span>
+        </div>
+        <div id="custom-desktop-apps" style="display:contents;"></div>
+    </div>
+
+    <div id="start-menu">
+        <div>
+            <input type="text" placeholder="Search systems & apps..." style="border-radius:20px; padding:10px 16px;">
+            <div class="start-grid">
+                <div class="start-item" onclick="openApp('about'); toggleStart();"><i class="fa-solid fa-circle-info" style="color:#ffffff;"></i><span>About</span></div>
+                <div class="start-item" onclick="openApp('app_store'); toggleStart();"><i class="fa-solid fa-store" style="color:#00f2fe;"></i><span>App Store</span></div>
+                <div class="start-item" onclick="openApp('app_publisher'); toggleStart();"><i class="fa-solid fa-upload" style="color:#70e2ff;"></i><span>Publisher</span></div>
+                <div class="start-item" onclick="openApp('chat'); toggleStart();"><i class="fa-brands fa-discord" style="color:#38ef7d;"></i><span>Chat</span></div>
+                <div class="start-item" onclick="openApp('files'); toggleStart();"><i class="fa-solid fa-box-archive" style="color:#00c6ff;"></i><span>Files</span></div>
+                <div class="start-item" onclick="openApp('settings'); toggleStart();"><i class="fa-solid fa-sliders" style="color:#ffffff;"></i><span>Settings</span></div>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-glass); padding-top:14px;">
+            <div style="font-size:12px; font-weight:700; color:#ffffff;" id="start-user-label"><i class="fa-solid fa-user-gear"></i> Not Signed In</div>
+            <button class="btn-os" style="font-size:10px; padding:4px 8px;" onclick="signOut()"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
+        </div>
+    </div>
+
+    <div id="taskbar">
+        <div class="taskbar-left">
+            <button class="taskbar-btn" onclick="toggleStart()"><i class="fa-solid fa-bolt-lightning" style="color:#00f2fe;"></i></button>
+        </div>
+        <div class="taskbar-center" id="tb-apps"></div>
+        <div class="taskbar-right">
+            <div class="system-tray-group">
+                <div class="tray-item" id="battery-display"><i class="fa-solid fa-battery-full" style="color:#00f2fe;"></i> 100%</div>
+                <div class="tray-item" id="date-display">Jan 1</div>
+                <div class="tray-item" style="font-weight:700; color:#00f2fe;" id="clock-display">00:00</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="windows-container"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getDatabase, ref, push, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+        // --- IndexedDB Vault Setup ---
+        const DB_NAME = 'DESKFLOP_ZERO_Vault';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'app_blobs';
+
+        function initVaultDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveBlobToVault(key, blob) {
+            const db = await initVaultDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.put(blob, key);
+                req.onsuccess = () => resolve(true);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function getBlobFromVault(key) {
+            const db = await initVaultDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function deleteBlobFromVault(key) {
+            const db = await initVaultDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.delete(key);
+                req.onsuccess = () => resolve(true);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // --- Firebase Integration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0_-Jf3b74dkFr2VsQ7OYq6DzPqN5lb6s",
+            authDomain: "comet-os-v2.firebaseapp.com",
+            databaseURL: "https://comet-os-v2-default-rtdb.firebaseio.com",
+            projectId: "comet-os-v2",
+            storageBucket: "comet-os-v2.firebasestorage.app",
+            messagingSenderId: "74637587140",
+            appId: "1:74637587140:web:d175ed8401267892db8f91",
+            measurementId: "G-4J0P8167LY"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let sysConfig = JSON.parse(localStorage.getItem('deskflop_zero_config')) || {
+            username: null,
+            accentColor: "#00f2fe"
+        };
+
+        let customWebApps = JSON.parse(localStorage.getItem('deskflop_zero_web_apps')) || [];
+        let activeBlobUrls = {};
+        let authMode = 'login'; // 'login' or 'register'
+
+        function saveWebApps() {
+            localStorage.setItem('deskflop_zero_web_apps', JSON.stringify(customWebApps));
+            renderCustomWebApps();
+        }
+
+        function saveConfig() {
+            localStorage.setItem('deskflop_zero_config', JSON.stringify(sysConfig));
+            applyConfig();
+        }
+
+        function applyConfig() {
+            document.documentElement.style.setProperty('--accent', sysConfig.accentColor);
+            if (sysConfig.username) {
+                document.getElementById('start-user-label').innerHTML = `<i class="fa-solid fa-user-gear"></i> ${sysConfig.username}`;
+            }
+        }
+
+        // --- AUTHENTICATION & UNIQUE USERNAME VERIFICATION ---
+        window.switchAuthTab = function(mode) {
+            authMode = mode;
+            document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+            document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+            document.getElementById('auth-submit-btn').innerText = mode === 'login' ? 'Sign In' : 'Register Account';
+        };
+
+        window.handleAuthSubmit = async function() {
+            const user = document.getElementById('auth-username').value.trim();
+            const pass = document.getElementById('auth-password').value.trim();
+
+            if (!user || !pass) {
+                alert("Please fill in both fields.");
+                return;
+            }
+
+            const cleanUserKey = user.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const userRef = ref(db, `deskflop/users/${cleanUserKey}`);
+
+            if (authMode === 'register') {
+                const snapshot = await get(userRef);
+                if (snapshot.exists()) {
+                    alert("This handle is already taken. Please pick another name.");
+                    return;
+                }
+                
+                // Create account record under deskflop namespace
+                await set(userRef, {
+                    displayName: user,
+                    password: pass,
+                    createdAt: Date.now()
+                });
+
+                loginUser(user);
+            } else {
+                const snapshot = await get(userRef);
+                if (!snapshot.exists()) {
+                    alert("Account does not exist. Please register first.");
+                    return;
+                }
+                
+                const userData = snapshot.val();
+                if (userData.password !== pass) {
+                    alert("Invalid password.");
+                    return;
+                }
+
+                loginUser(userData.displayName);
+            }
+        };
+
+        function loginUser(username) {
+            sysConfig.username = username;
+            saveConfig();
+            document.getElementById('boot-screen').classList.add('fade-out');
+            setTimeout(() => document.getElementById('boot-screen').remove(), 800);
+        }
+
+        window.signOut = function() {
+            sysConfig.username = null;
+            localStorage.removeItem('deskflop_zero_config');
+            location.reload();
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sysConfig.username) {
+                applyConfig();
+                document.getElementById('boot-screen').style.display = 'none';
+            }
+            renderCustomWebApps();
+            initTrayClockAndBattery();
+        });
+
+        function initTrayClockAndBattery() {
+            function updateClockDate() {
+                const now = new Date();
+                document.getElementById('clock-display').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('date-display').innerText = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            }
+            updateClockDate();
+            setInterval(updateClockDate, 1000);
+
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(battery => {
+                    function updateBattery() {
+                        const level = Math.round(battery.level * 100);
+                        const isCharging = battery.charging;
+                        let iconClass = 'fa-battery-full';
+                        if (level <= 20) iconClass = 'fa-battery-quarter';
+                        else if (level <= 50) iconClass = 'fa-battery-half';
+                        else if (level <= 80) iconClass = 'fa-battery-three-quarters';
+
+                        document.getElementById('battery-display').innerHTML = `
+                            <i class="fa-solid ${isCharging ? 'fa-bolt' : iconClass}" style="color:${isCharging ? '#00f2fe' : (level <= 20 ? '#ff4757' : '#00f2fe')};"></i> ${level}%
+                        `;
+                    }
+                    updateBattery();
+                    battery.addEventListener('levelchange', updateBattery);
+                    battery.addEventListener('chargingchange', updateBattery);
+                });
+            }
+        }
+
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const ctx = document.getElementById('context-menu');
+            const targetIcon = e.target.closest('.app-icon');
+            let ctxHTML = '';
+
+            if (targetIcon) {
+                const appKey = targetIcon.dataset.app;
+                const isCustom = appKey && appKey.startsWith('app_');
+                ctxHTML = `
+                    <div class="ctx-header">Application</div>
+                    <div class="ctx-item" onclick="triggerAppLaunch('${appKey}')"><i class="fa-solid fa-folder-open"></i> Launch App</div>
+                    ${isCustom ? `<div class="ctx-item danger" onclick="uninstallWebApp('${appKey}')"><i class="fa-solid fa-trash"></i> Delete App</div>` : ''}
+                `;
+            } else {
+                ctxHTML = `
+                    <div class="ctx-header">deskflop: zero</div>
+                    <div class="ctx-item" onclick="openApp('about'); hideContext();"><i class="fa-solid fa-circle-info"></i> About System</div>
+                    <div class="ctx-item" onclick="openApp('app_store'); hideContext();"><i class="fa-solid fa-store"></i> Open App Store</div>
+                    <div class="ctx-item" onclick="openApp('app_publisher'); hideContext();"><i class="fa-solid fa-upload"></i> Upload App</div>
+                    <div class="ctx-item" onclick="openApp('settings'); hideContext();"><i class="fa-solid fa-sliders"></i> Customize Settings</div>
+                `;
+            }
+
+            ctx.innerHTML = ctxHTML;
+            ctx.style.display = 'flex';
+            ctx.style.left = `${Math.min(e.clientX, window.innerWidth - 230)}px`;
+            ctx.style.top = `${Math.min(e.clientY, window.innerHeight - 260)}px`;
+        });
+
+        window.hideContext = function() { document.getElementById('context-menu').style.display = 'none'; };
+
+        window.triggerAppLaunch = function(key) {
+            hideContext();
+            if (key.startsWith('app_')) {
+                const found = customWebApps.find(a => a.id === key);
+                if (found) openWebApp(found);
+            } else {
+                openApp(key);
+            }
+        };
+
+        window.uninstallWebApp = async function(id) {
+            hideContext();
+            customWebApps = customWebApps.filter(a => a.id !== id);
+            saveWebApps();
+            await deleteBlobFromVault(id);
+            if (windows[id]) closeWin(id);
+        };
+
+        window.toggleStart = function() { document.getElementById('start-menu').classList.toggle('active'); };
+
+        let windows = {};
+        let topZ = 100;
+
+        function renderCustomWebApps() {
+            const container = document.getElementById('custom-desktop-apps');
+            container.innerHTML = '';
+            customWebApps.forEach(app => {
+                const appEl = document.createElement('div');
+                appEl.className = 'app-icon';
+                appEl.dataset.app = app.id;
+                appEl.onclick = () => openWebApp(app);
+                
+                let iconHTML = `<i class="${app.icon || 'fa-solid fa-cube'}" style="color:${app.color || '#00f2fe'};"></i>`;
+                if (app.customImageUrl) {
+                    iconHTML = `<img src="${app.customImageUrl}" class="custom-app-icon" alt="${app.name}">`;
+                }
+
+                appEl.innerHTML = `${iconHTML}<span>${app.name}</span>`;
+                container.appendChild(appEl);
+            });
+        }
+
+        let pendingAppBlob = null;
+        let activeChatServer = 'Global Chat';
+
+        const appRegistry = {
+            about: {
+                title: "About deskflop: zero", icon: "fa-circle-info", color: "#ffffff",
+                content: `
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div class="about-card" style="text-align:center;">
+                            <i class="fa-solid fa-bolt-lightning" style="font-size:52px; color:#00f2fe; margin-bottom:12px; filter:drop-shadow(0 0 15px #00f2fe);"></i>
+                            <div style="font-size:22px; font-weight:900; letter-spacing:2px; text-transform:lowercase;">deskflop: zero</div>
+                            <div style="font-size:12px; color:var(--text-sub); margin-top:4px;">Protected Application Architecture Standard</div>
+                        </div>
+
+                        <div class="about-card">
+                            <div style="font-size:13px; font-weight:700; margin-bottom:12px; border-bottom:1px solid var(--border-glass); padding-bottom:6px; color:#ffffff;">Core Engine Specifications</div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:11px; color:var(--text-sub);">
+                                <div><strong>System Core:</strong> deskflop-0.0</div>
+                                <div><strong>Storage Engine:</strong> Local IndexedDB Vault</div>
+                                <div><strong>Database:</strong> Realtime Cloud Database</div>
+                                <div><strong>Identity Guard:</strong> Lockout Authentication</div>
+                                <div><strong>App Ownership:</strong> Permanent Author Lock</div>
+                                <div><strong>Deployment:</strong> Standalone Web OS</div>
+                            </div>
+                        </div>
+                    </div>`
+            },
+            app_publisher: {
+                title: "App Publisher Studio", icon: "fa-upload", color: "#70e2ff",
+                content: `
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <div style="font-size:12px; color:var(--text-sub);">Publish web applications globally with protected author credits.</div>
+                        <input type="text" id="pub-app-name" placeholder="Application Title">
+                        
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="font-size:10px; color:var(--text-sub);">Category</label>
+                                <select id="pub-app-cat">
+                                    <option value="Games">Games</option>
+                                    <option value="Video Players">Video Players</option>
+                                    <option value="Sites">Sites</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Tools">Tools</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-size:10px; color:var(--text-sub);">Standard Icon</label>
+                                <select id="pub-app-icon">
+                                    <option value="fa-solid fa-cube">Cube Icon</option>
+                                    <option value="fa-solid fa-gamepad">Gamepad Icon</option>
+                                    <option value="fa-solid fa-video">Video Icon</option>
+                                    <option value="fa-solid fa-globe">Global Icon</option>
+                                    <option value="fa-solid fa-code">Developer Icon</option>
+                                    <option value="fa-solid fa-wrench">Tools Icon</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="font-size:10px; color:var(--text-sub);">Custom App Icon Image URL (Optional)</label>
+                            <input type="text" id="pub-app-img-url" placeholder="https://example.com/icon.png">
+                        </div>
+
+                        <input type="text" id="pub-app-color" placeholder="Hex Accent Color (#00f2fe)" value="#00f2fe">
+                        
+                        <div style="padding:12px; border:1px dashed var(--border-glass); border-radius:8px; background:rgba(0,10,25,0.4);">
+                            <div style="font-size:11px; margin-bottom:6px; color:#ffffff;">Target Source (Website URL or HTML File):</div>
+                            <input type="text" id="pub-app-url" placeholder="Website URL (e.g. https://example.com)">
+                            <div style="text-align:center; font-size:10px; margin:8px 0; color:var(--text-sub);">- OR -</div>
+                            <input type="file" id="pub-app-file" accept=".html,.htm" onchange="handlePubFile(event)">
+                        </div>
+
+                        <button class="btn-os" onclick="publishAppToStore()"><i class="fa-solid fa-cloud-arrow-up"></i> Publish Protected Application</button>
+                    </div>`
+            },
+            app_store: {
+                title: "App Store", icon: "fa-store", color: "#00f2fe",
+                content: `
+                    <div style="display:flex; flex-direction:column; height:100%;">
+                        <div style="display:flex; gap:10px; margin-bottom:14px;">
+                            <select id="store-cat-filter" onchange="fetchStoreApps()" style="width:180px;">
+                                <option value="ALL">All Categories</option>
+                                <option value="Games">Games</option>
+                                <option value="Video Players">Video Players</option>
+                                <option value="Sites">Sites</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Tools">Tools</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <button class="btn-os" onclick="fetchStoreApps()"><i class="fa-solid fa-rotate-right"></i> Refresh Market</button>
+                        </div>
+                        <div id="store-app-list" class="store-grid"></div>
+                    </div>`,
+                init: () => fetchStoreApps()
+            },
+            chat: {
+                title: "Chat Network Engine", icon: "fa-discord", color: "#38ef7d",
+                content: `
+                    <div class="chat-container">
+                        <div class="chat-sidebar">
+                            <div style="padding:10px; border-bottom:1px solid var(--border-glass); display:flex; flex-direction:column; gap:8px;">
+                                <button class="btn-os" style="width:100%; font-size:11px;" onclick="createNewServer()"><i class="fa-solid fa-plus"></i> Claim Channel</button>
+                                <input type="text" id="server-search-input" placeholder="Search channels..." onkeyup="searchChatServers()" style="padding:6px 10px; font-size:11px;">
+                            </div>
+                            <div id="server-list-container" style="flex:1; overflow-y:auto;"></div>
+                        </div>
+                        <div class="chat-main">
+                            <div style="padding:10px 14px; background:#051329; border-bottom:1px solid var(--border-glass); font-size:12px; font-weight:700; color:#00f2fe; display:flex; justify-content:space-between;" id="active-server-header">
+                                # Global Chat
+                            </div>
+                            <div id="chat-msgs" style="flex:1; padding:14px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+                            <div style="display:flex; padding:10px; background:#051329; border-top:1px solid var(--border-glass); gap:8px;">
+                                <input type="text" id="chat-in" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                                <button class="btn-os" onclick="sendChatMessage()">Send</button>
+                            </div>
+                        </div>
+                    </div>`,
+                init: () => initChatEngine()
+            },
+            files: {
+                title: "Files Vault", icon: "fa-box-archive", color: "#00c6ff",
+                content: `
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div style="padding:20px; border:1px dashed var(--border-glass); border-radius:var(--radius-md); background:rgba(0,10,25,0.4); text-align:center;">
+                            <i class="fa-solid fa-box-archive" style="font-size:36px; color:#00f2fe; margin-bottom:12px; filter:drop-shadow(0 0 10px #00f2fe);"></i>
+                            <div style="font-size:14px; font-weight:700; color:#ffffff; margin-bottom:6px;">IndexedDB Local Vault</div>
+                            <div style="font-size:11px; color:var(--text-sub); margin-bottom:14px;">Store HTML games and single-file web applications locally.</div>
+                            <input type="file" id="html-file-uploader" accept=".html,.htm" onchange="handleHTMLVaultUpload(event)" style="display:none;">
+                            <button class="btn-os" onclick="document.getElementById('html-file-uploader').click()"><i class="fa-solid fa-file-circle-plus"></i> Import HTML File</button>
+                        </div>
+                    </div>`
+            },
+            settings: {
+                title: "Settings", icon: "fa-sliders", color: "#ffffff",
+                content: `
+                    <div style="display:flex; flex-direction:column; gap:14px;">
+                        <div style="font-weight:700; font-size:13px; border-bottom:1px solid var(--border-glass); padding-bottom:6px; color:#ffffff;">Active User Context</div>
+                        <div style="font-size:12px; color:var(--text-sub);">Signed in as: <strong style="color:#ffffff;" id="setting-user-display">---</strong></div>
+                        <button class="btn-os" style="background:#ff4757; color:#fff;" onclick="signOut()"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
+                    </div>`,
+                init: () => {
+                    document.getElementById('setting-user-display').innerText = sysConfig.username || 'Not Signed In';
+                }
+            }
+        };
+
+        window.handlePubFile = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            pendingAppBlob = file;
+        };
+
+        // --- APP OWNERSHIP & APP STORE PROTECTION ---
+        window.publishAppToStore = function() {
+            const name = document.getElementById('pub-app-name').value.trim();
+            const category = document.getElementById('pub-app-cat').value;
+            const icon = document.getElementById('pub-app-icon').value;
+            const customImageUrl = document.getElementById('pub-app-img-url').value.trim();
+            const color = document.getElementById('pub-app-color').value.trim() || "#00f2fe";
+            const url = document.getElementById('pub-app-url').value.trim();
+
+            if (!name) { alert("App Title required!"); return; }
+            if (!url && !pendingAppBlob) { alert("Please provide a site URL or an HTML File!"); return; }
+
+            const cleanNameKey = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+            // Check if app title already exists to prevent spoofing under deskflop/
+            get(ref(db, `deskflop/app_store_titles/${cleanNameKey}`)).then((snapshot) => {
+                if (snapshot.exists() && snapshot.val().author !== sysConfig.username) {
+                    alert(`An app named "${name}" has already been published by another author (${snapshot.val().author}). You cannot claim or overwrite this name!`);
+                    return;
+                }
+
+                // Reserve title ownership under deskflop/
+                set(ref(db, `deskflop/app_store_titles/${cleanNameKey}`), { author: sysConfig.username });
+
+                const doUpload = (htmlContent) => {
+                    const payload = {
+                        name, category, icon, color,
+                        customImageUrl: customImageUrl || null,
+                        author: sysConfig.username, // Bound permanently to logged in author
+                        url: url || null,
+                        htmlContent: htmlContent || null,
+                        timestamp: Date.now()
+                    };
+                    push(ref(db, 'deskflop/app_store'), payload).then(() => {
+                        alert(`App "${name}" published under protected credit to ${sysConfig.username}!`);
+                        pendingAppBlob = null;
+                        closeWin('app_publisher');
+                    });
+                };
+
+                if (pendingAppBlob) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => doUpload(evt.target.result);
+                    reader.readAsText(pendingAppBlob);
+                } else {
+                    doUpload(null);
+                }
+            });
+        };
+
+        window.fetchStoreApps = function() {
+            const listEl = document.getElementById('store-app-list');
+            if (!listEl) return;
+            const filter = document.getElementById('store-cat-filter').value;
+
+            get(ref(db, 'deskflop/app_store')).then((snapshot) => {
+                listEl.innerHTML = '';
+                const data = snapshot.val();
+                if (data) {
+                    Object.entries(data).forEach(([key, app]) => {
+                        if (filter !== 'ALL' && app.category !== filter) return;
+                        const card = document.createElement('div');
+                        card.className = 'store-card';
+                        
+                        let displayIcon = `<i class="${app.icon || 'fa-solid fa-cube'}" style="color:${app.color || '#00f2fe'};"></i>`;
+                        if (app.customImageUrl) {
+                            displayIcon = `<img src="${app.customImageUrl}" class="store-icon-img" alt="${app.name}">`;
+                        }
+
+                        const isOwner = app.author === sysConfig.username;
+
+                        card.innerHTML = `
+                            <i class="fa-solid fa-shield-halved protected-badge" title="Protected Ownership"></i>
+                            ${displayIcon}
+                            <div style="font-weight:700; font-size:12px; color:#ffffff;">${app.name}</div>
+                            <div style="font-size:10px; color:var(--text-sub);"><i class="fa-solid fa-user-check"></i> ${app.author}</div>
+                            <div style="display:flex; gap:4px; width:100%; margin-top:6px;">
+                                <button class="btn-os" style="flex:1; font-size:10px;" onclick="installAppFromStore('${key}')"><i class="fa-solid fa-download"></i> Install</button>
+                                ${isOwner ? `<button class="btn-os" style="background:#ff4757; color:#fff; font-size:10px; padding:4px 8px;" onclick="deleteStoreApp('${key}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            </div>
+                        `;
+                        listEl.appendChild(card);
+                    });
+                } else {
+                    listEl.innerHTML = `<div style="font-size:12px; color:var(--text-sub); grid-column:1/-1; text-align:center;">No published apps found.</div>`;
+                }
+            });
+        };
+
+        window.deleteStoreApp = function(storeKey) {
+            get(ref(db, `deskflop/app_store/${storeKey}`)).then((snapshot) => {
+                const appObj = snapshot.val();
+                if (appObj && appObj.author === sysConfig.username) {
+                    set(ref(db, `deskflop/app_store/${storeKey}`), null);
+                    alert("App unpublished from global marketplace.");
+                    fetchStoreApps();
+                } else {
+                    alert("Unauthorized: You do not own this app.");
+                }
+            });
+        };
+
+        window.installAppFromStore = function(storeKey) {
+            get(ref(db, `deskflop/app_store/${storeKey}`)).then(async (snapshot) => {
+                const appObj = snapshot.val();
+                if (appObj) {
+                    appObj.id = 'app_' + Date.now();
+                    if (appObj.htmlContent) {
+                        const blob = new Blob([appObj.htmlContent], { type: 'text/html' });
+                        await saveBlobToVault(appObj.id, blob);
+                        appObj.isVaultApp = true;
+                        delete appObj.htmlContent;
+                    }
+                    customWebApps.push(appObj);
+                    saveWebApps();
+                    alert(`"${appObj.name}" installed on desktop!`);
+                }
+            });
+        };
+
+        let serverList = [];
+
+        function initChatEngine() {
+            onValue(ref(db, 'deskflop/chat_servers'), (snapshot) => {
+                const data = snapshot.val();
+                serverList = [];
+                if (data) {
+                    Object.keys(data).forEach(sName => serverList.push(sName));
+                }
+                if (!serverList.includes('Global Chat')) {
+                    set(ref(db, 'deskflop/chat_servers/Global Chat/claimedBy'), 'SYSTEM');
+                    serverList.push('Global Chat');
+                }
+                renderServerList(serverList);
+            });
+            listenToChatServer(activeChatServer);
+        }
+
+        function renderServerList(list) {
+            const container = document.getElementById('server-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+            list.forEach(srvName => {
+                const item = document.createElement('div');
+                item.className = `server-item ${srvName === activeChatServer ? 'active' : ''}`;
+                item.innerHTML = `<i class="fa-solid fa-hashtag"></i> ${srvName}`;
+                item.onclick = () => switchChatServer(srvName);
+                container.appendChild(item);
+            });
+        }
+
+        window.searchChatServers = function() {
+            const q = document.getElementById('server-search-input').value.toLowerCase();
+            renderServerList(serverList.filter(s => s.toLowerCase().includes(q)));
+        };
+
+        window.createNewServer = function() {
+            const name = prompt("Enter new Channel Name:")?.trim();
+            if (!name) return;
+
+            get(ref(db, `deskflop/chat_servers/${name}`)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    alert(`Channel name "${name}" is already claimed!`);
+                } else {
+                    set(ref(db, `deskflop/chat_servers/${name}`), {
+                        claimedBy: sysConfig.username,
+                        createdAt: Date.now()
+                    }).then(() => {
+                        alert(`Channel "#${name}" successfully created!`);
+                        switchChatServer(name);
+                    });
+                }
+            });
+        };
+
+        function switchChatServer(srvName) {
+            activeChatServer = srvName;
+            document.getElementById('active-server-header').innerText = `# ${srvName}`;
+            renderServerList(serverList);
+            listenToChatServer(srvName);
+        }
+
+        function listenToChatServer(srvName) {
+            onValue(ref(db, `deskflop/chat_servers/${srvName}/messages`), (snapshot) => {
+                const msgsEl = document.getElementById('chat-msgs');
+                if (!msgsEl) return;
+                msgsEl.innerHTML = '';
+                const data = snapshot.val();
+                if (data) {
+                    Object.values(data).forEach(m => {
+                        const bubble = document.createElement('div');
+                        bubble.style.cssText = `max-width:80%; padding:8px 12px; border-radius:8px; font-size:12px; ${m.user === sysConfig.username ? 'align-self:flex-end; background:#00f2fe; color:#020b18; font-weight:500;' : 'align-self:flex-start; background:#051329; border:1px solid rgba(0,242,254,0.2); color:#ffffff;'}`;
+                        bubble.innerHTML = `<div style="font-size:10px; opacity:0.8; font-weight:700; margin-bottom:2px;">${m.user}</div>${m.text}`;
+                        msgsEl.appendChild(bubble);
+                    });
+                    msgsEl.scrollTop = msgsEl.scrollHeight;
+                }
+            });
+        }
+
+        window.sendChatMessage = function() {
+            const input = document.getElementById('chat-in');
+            if (input.value.trim()) {
+                push(ref(db, `deskflop/chat_servers/${activeChatServer}/messages`), {
+                    user: sysConfig.username,
+                    text: input.value.trim(),
+                    timestamp: Date.now()
+                });
+                input.value = '';
+            }
+        };
+
+        window.handleHTMLVaultUpload = async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const appId = 'app_' + Date.now();
+            const appName = file.name.replace(/\.[^/.]+$/, "");
+
+            await saveBlobToVault(appId, file);
+
+            const appObj = {
+                id: appId,
+                name: appName,
+                isVaultApp: true,
+                icon: 'fa-solid fa-cube',
+                color: '#00f2fe'
+            };
+
+            customWebApps.push(appObj);
+            saveWebApps();
+            alert(`"${appName}" imported into Vault!`);
+        };
+
+        window.openWebApp = async function(appObj) {
+            if (windows[appObj.id]) { focusWindow(windows[appObj.id]); return; }
+            topZ++;
+
+            const win = document.createElement('div');
+            win.className = 'os-window active';
+            win.style.zIndex = topZ;
+            win.style.top = '50px'; win.style.left = '70px';
+
+            let iconHeaderHTML = `<i class="${appObj.icon || 'fa-solid fa-cube'}" style="color:${appObj.color || '#00f2fe'}"></i>`;
+            if (appObj.customImageUrl) {
+                iconHeaderHTML = `<img src="${appObj.customImageUrl}" style="width:16px; height:16px; border-radius:3px; object-fit:cover;">`;
+            }
+
+            win.innerHTML = `
+                <div class="window-header" onmousedown="dragWin(event, '${appObj.id}')">
+                    <div class="window-title">${iconHeaderHTML} ${appObj.name}</div>
+                    <div class="window-controls">
+                        <button class="control-btn" onclick="toggleMax('${appObj.id}')"><i class="fa-regular fa-square"></i></button>
+                        <button class="control-btn btn-close" onclick="closeWin('${appObj.id}')"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                <div class="window-content" style="padding:0;">
+                    <iframe id="iframe-${appObj.id}" sandbox="allow-scripts allow-same-origin allow-forms" style="width:100%; height:100%; border:none; background:white;"></iframe>
+                </div>
+            `;
+
+            document.getElementById('windows-container').appendChild(win);
+            windows[appObj.id] = win;
+            appRegistry[appObj.id] = { title: appObj.name, icon: appObj.icon || 'fa-solid fa-cube', color: appObj.color || '#00f2fe', customImageUrl: appObj.customImageUrl };
+
+            const frame = document.getElementById(`iframe-${appObj.id}`);
+
+            if (appObj.isVaultApp) {
+                const blob = await getBlobFromVault(appObj.id);
+                if (blob) {
+                    const blobUrl = URL.createObjectURL(blob);
+                    activeBlobUrls[appObj.id] = blobUrl;
+                    frame.src = blobUrl;
+                } else {
+                    alert("Error: File not found in Vault.");
+                }
+            } else if (appObj.htmlContent) {
+                frame.srcdoc = appObj.htmlContent;
+            } else if (appObj.url) {
+                frame.src = appObj.url;
+            }
+
+            renderTaskbar();
+        };
+
+        window.openApp = function(id) {
+            if (windows[id]) { focusWindow(windows[id]); return; }
+            const config = appRegistry[id];
+            topZ++;
+
+            const win = document.createElement('div');
+            win.className = 'os-window active';
+            win.style.zIndex = topZ;
+            win.style.top = '60px'; win.style.left = '100px';
+
+            win.innerHTML = `
+                <div class="window-header" onmousedown="dragWin(event, '${id}')">
+                    <div class="window-title"><i class="fa-solid ${config.icon}" style="color:${config.color}"></i> ${config.title}</div>
+                    <div class="window-controls">
+                        <button class="control-btn" onclick="toggleMax('${id}')"><i class="fa-regular fa-square"></i></button>
+                        <button class="control-btn btn-close" onclick="closeWin('${id}')"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+                <div class="window-content">${config.content}</div>
+            `;
+
+            document.getElementById('windows-container').appendChild(win);
+            windows[id] = win;
+            if (config.init) config.init();
+            renderTaskbar();
+        };
+
+        window.closeWin = function(id) {
+            if (windows[id]) {
+                if (activeBlobUrls[id]) {
+                    URL.revokeObjectURL(activeBlobUrls[id]);
+                    delete activeBlobUrls[id];
+                }
+                windows[id].remove();
+                delete windows[id];
+                renderTaskbar();
+            }
+        };
+
+        window.toggleMax = function(id) { windows[id].classList.toggle('maximized'); };
+
+        function focusWindow(win) {
+            topZ++;
+            win.style.zIndex = topZ;
+        }
+
+        window.dragWin = function(e, id) {
+            const win = windows[id];
+            focusWindow(win);
+            let sx = e.clientX - win.offsetLeft, sy = e.clientY - win.offsetTop;
+            function move(ev) { win.style.left = (ev.clientX - sx) + 'px'; win.style.top = (ev.clientY - sy) + 'px'; }
+            function stop() { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', stop); }
+            window.addEventListener('mousemove', move); window.addEventListener('mouseup', stop);
+        };
+
+        function renderTaskbar() {
+            const c = document.getElementById('tb-apps');
+            c.innerHTML = '';
+            for (let id in windows) {
+                const b = document.createElement('button');
+                b.className = 'taskbar-btn active-win';
+                
+                let iconDisplay = `<i class="${appRegistry[id].icon}" style="color:${appRegistry[id].color}"></i>`;
+                if (appRegistry[id].customImageUrl) {
+                    iconDisplay = `<img src="${appRegistry[id].customImageUrl}" style="width:20px; height:20px; border-radius:4px; object-fit:cover;">`;
+                }
+
+                b.innerHTML = iconDisplay;
+                b.onclick = () => focusWindow(windows[id]);
+                c.appendChild(b);
+            }
+        }
+    </script>
+</body>
+</html>
